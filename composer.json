@@ -1,0 +1,6 @@
+{
+    "require": {
+        "google/cloud-vision": "^0.12.0",
+        "jordikroon/google-vision": "^1.7"
+    }
+}
