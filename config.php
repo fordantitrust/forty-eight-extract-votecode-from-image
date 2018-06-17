@@ -19,7 +19,7 @@
  */
 
 // Google Cloud Platform: Google Vision API Key
-define('GOOGLE_APIKEY', '');
+define('GOOGLE_VISION_APIKEY', '');
 
 // Image storage directory
 define('IMAGE_DIR', 'C:\xxx\xxx'); // Last directory without "\" ore "/"

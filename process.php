@@ -12,9 +12,9 @@
  * obtain it through the world-wide-web, please send an email
  * to annop@thaicyberpoint.com so we can send you a copy immediately.
  *
- * @package	   akb48-election-ocr
+ * @package    akb48-election-ocr
  * @author     Ford AntiTrust
- * @since	   Version 2018
+ * @since      Version 2018
  * @license    GNU LGPL 2.1 http://creativecommons.org/licenses/LGPL/2.1
  */
 
@@ -27,6 +27,19 @@ require __DIR__ . '/vendor/autoload.php';
 // Load configuration
 require_once __DIR__ . '/config.php';
 
+// Round Vote
+$round = 'round-1';
+$outputFileName = 'result.csv';
+
+// Default value
+$statsOk = 0;
+$statsFailed = 0;
+$outputCodesNum = 0;
+$outputCodes = array();
+
+// Reset CSV file
+file_put_contents($outputFileName, '');
+
 try {
 
     // Code list
@@ -36,12 +49,12 @@ try {
     $imageFiles = array();
 
     $vision = new \Vision\Vision(
-        GOOGLE_APIKEY,
+        GOOGLE_VISION_APIKEY,
         [
             // Use Google Vision API: (Text Detection, Limit)
             new \Vision\Feature(
-                \Vision\Feature::DOCUMENT_TEXT_DETECTION,
-                100
+                \Vision\Feature::TEXT_DETECTION,
+                1000
             ),
         ]
     );
@@ -54,9 +67,9 @@ try {
         $pathFile = IMAGE_DIR."\\".$fileName;
         if(@is_array(getimagesize($pathFile) )){
             $imageFiles[$fileNameIndex] = array(
-                    'fileName' => $fileName,
-                    'path' => $pathFile
-                );
+                'fileName' => $fileName,
+                'path' => $pathFile
+            );
         }
     }
 
@@ -70,6 +83,8 @@ try {
         // Get result
         $texts = $response->getTextAnnotations();
 
+        $countMatches = 0;
+        
         foreach($texts as $text) {
 
             $subject = $text->getDescription();
@@ -81,9 +96,41 @@ try {
             // Retrieve matches Code to temp list
             if(count($matches) > 0) {
                 foreach($matches as $match) {
+
+                    $outputCodesNum++;
+
                     $voteCodes[$imageIndex] = $match;
+
+                    echo $outputCodesNum." - ".$imageFiles[$imageIndex]['fileName'] . ' = ' . $match . PHP_EOL;
+
+                    $dataMatch = explode(" ", $match);
+
+                    $code = strtolower($dataMatch[0].','.$dataMatch[1]);
+
+                    $outputCodes[$imageIndex] = array('code' => $code, 'fileName' => $imageFiles[$imageIndex]['fileName']);
+
+                    file_put_contents($outputFileName, $code.',"'.$imageFiles[$imageIndex]['fileName'] .'","New",NULL,'. $round . ''. PHP_EOL, FILE_APPEND);
+
+                    $countMatches++;
+
+                    $statsOk++;
+                    
                 }
             }
+        }
+
+        if($countMatches == 0) {
+
+            $outputCodesNum++;
+
+            $outputCodes[$imageIndex] = array('code' => 'failed', 'fileName' => $imageFiles[$imageIndex]['fileName']);
+
+            echo $outputCodesNum." - ".$imageFiles[$imageIndex]['fileName'] . ' = OCR-Failed' . PHP_EOL;
+
+            file_put_contents($outputFileName, 'failed,failed,"'.$imageFiles[$imageIndex]['fileName'] .'","OCR-Failed",NULL,'.$round.''. PHP_EOL, FILE_APPEND);
+
+            $statsFailed++;
+
         }
     }
 } catch (Exception $e) {
@@ -92,6 +139,6 @@ try {
 
 echo PHP_EOL;
 
-foreach ($voteCodes as $index => $code) {
-    echo $imageFiles[$index]['fileName'] . ' = ' . $code . PHP_EOL;
-}
+echo "OK:" . $statsOk . PHP_EOL;
+echo "Failed:" . $statsFailed . PHP_EOL;
+echo "Total:" . ($statsOk + $statsFailed) . PHP_EOL;
